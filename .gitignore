@@ -98,9 +98,9 @@ results/*
 !results/checkpoints_ppo/
 !results/checkpoints_diffusion/
 results/checkpoints_ppo/*
-results/checkpoints_diffusion/*
+# results/checkpoints_diffusion/*
 !results/checkpoints_ppo/model_wall_great.pt
-!results/checkpoints_diffusion/ckpt_000009127.pth
+# !results/checkpoints_diffusion/ckpt_000009127.pth
 
 logs/
 *.log
