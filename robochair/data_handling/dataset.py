@@ -83,7 +83,9 @@ class WheelchairSequenceDataset(IterableDataset):
         print(f"Датасет инициализирован для директории: {self.episodes_dir}")
         print(f"Найдено {len(self.episode_paths)} эпизодов.")
         print(f"Длина посл-ти наблюдений (n_obs_steps): {self.n_obs_steps}")
-        print(f"Длина посл-ти действий (diffusion_horizon): {self.diffusion_horizon}")
+        print(
+            f"Длина посл-ти действий (diffusion_horizon): {self.diffusion_horizon}"
+        )
         print(f"Минимальная длина эпизода: {self.min_episode_len}")
         print(f"Размер чанка для загрузки: {self.episode_chunk_size} эпизодов")
         print(f"Целевое устройство для тензоров: {self.device}")
@@ -112,7 +114,9 @@ class WheelchairSequenceDataset(IterableDataset):
         valid_episodes.sort(key=lambda x: x[0])
         return [path for index, path in valid_episodes]
 
-    def _load_episode(self, episode_path: Path) -> Optional[Dict[str, torch.Tensor]]:
+    def _load_episode(
+        self, episode_path: Path
+    ) -> Optional[Dict[str, torch.Tensor]]:
         """Загружает все данные для одного эпизода на self.device."""
         try:
             loaded_tensors = {}
@@ -174,7 +178,6 @@ class WheelchairSequenceDataset(IterableDataset):
             ep_state = torch.clip(ep_state, -4.0, 4.0)
             ep_state = torch.nan_to_num(ep_state, nan=0.0)
 
-
             # Определяем, сколько валидных стартовых позиций есть в эпизоде
             # Последний старт i: i + max(n_obs, n_act) - 1 < L => i < L - max + 1
             num_valid_starts = (
@@ -190,7 +193,9 @@ class WheelchairSequenceDataset(IterableDataset):
                 )  # Действия начинаются с того же шага i
 
                 # Извлекаем последовательности
-                obs_seq = ep_state[obs_start:obs_end]  # (n_obs_steps, state_dim)
+                obs_seq = ep_state[
+                    obs_start:obs_end
+                ]  # (n_obs_steps, state_dim)
                 grid_seq = ep_grids[obs_start:obs_end]  # (n_obs_steps, C, H, W)
                 action_seq = ep_actions[
                     act_start:act_end
@@ -289,11 +294,10 @@ if __name__ == "__main__":
         #     batch = next(dl_iter)
 
         # Переменные для хранения общих min/max и флага NaN
-        overall_min_state, overall_max_state = float('inf'), float('-inf')
-        overall_min_action, overall_max_action = float('inf'), float('-inf')
-        overall_min_grid, overall_max_grid = float('inf'), float('-inf')
+        overall_min_state, overall_max_state = float("inf"), float("-inf")
+        overall_min_action, overall_max_action = float("inf"), float("-inf")
+        overall_min_grid, overall_max_grid = float("inf"), float("-inf")
         found_nan_state, found_nan_action, found_nan_grid = False, False, False
-
 
         for i, batch in enumerate(dataloader):
             # if i >= 10: # Ограничим вывод 5 батчами для примера
@@ -319,7 +323,7 @@ if __name__ == "__main__":
 
             # print(
             #     f"  Пример action[0]: {batch['action'][0].tolist()}"
-            # ) 
+            # )
 
             # print(
             #     f"  Форма action_is_pad: {batch['action_is_pad'].shape}"
@@ -328,38 +332,46 @@ if __name__ == "__main__":
             #     f"  Пример action_is_pad[0]: {batch['action_is_pad'][0].tolist()}"
             # )  # Ожидаем все False
 
-
-                        # --- Проверки для текущего батча ---
+            # --- Проверки для текущего батча ---
             state_tensor = batch[OBS_ROBOT]
-            action_tensor = batch['action']
+            action_tensor = batch["action"]
             grid_tensor = batch[GRID_KEY]
 
             # Проверка state
             min_state_batch = torch.min(state_tensor).item()
             max_state_batch = torch.max(state_tensor).item()
             has_nan_state_batch = torch.isnan(state_tensor).any().item()
-            print(f"  {OBS_ROBOT}: Min={min_state_batch:.4f}, Max={max_state_batch:.4f}, NaN присутствует={has_nan_state_batch}")
+            print(
+                f"  {OBS_ROBOT}: Min={min_state_batch:.4f}, Max={max_state_batch:.4f}, NaN присутствует={has_nan_state_batch}"
+            )
             overall_min_state = min(overall_min_state, min_state_batch)
             overall_max_state = max(overall_max_state, max_state_batch)
-            if has_nan_state_batch: found_nan_state = True
+            if has_nan_state_batch:
+                found_nan_state = True
 
             # Проверка action
             min_action_batch = torch.min(action_tensor).item()
             max_action_batch = torch.max(action_tensor).item()
             has_nan_action_batch = torch.isnan(action_tensor).any().item()
-            print(f"  action: Min={min_action_batch:.4f}, Max={max_action_batch:.4f}, NaN присутствует={has_nan_action_batch}")
+            print(
+                f"  action: Min={min_action_batch:.4f}, Max={max_action_batch:.4f}, NaN присутствует={has_nan_action_batch}"
+            )
             overall_min_action = min(overall_min_action, min_action_batch)
             overall_max_action = max(overall_max_action, max_action_batch)
-            if has_nan_action_batch: found_nan_action = True
+            if has_nan_action_batch:
+                found_nan_action = True
 
             # Проверка grid
             min_grid_batch = torch.min(grid_tensor).item()
             max_grid_batch = torch.max(grid_tensor).item()
             has_nan_grid_batch = torch.isnan(grid_tensor).any().item()
-            print(f"  {GRID_KEY}: Min={min_grid_batch:.4f}, Max={max_grid_batch:.4f}, NaN присутствует={has_nan_grid_batch}")
+            print(
+                f"  {GRID_KEY}: Min={min_grid_batch:.4f}, Max={max_grid_batch:.4f}, NaN присутствует={has_nan_grid_batch}"
+            )
             overall_min_grid = min(overall_min_grid, min_grid_batch)
             overall_max_grid = max(overall_max_grid, max_grid_batch)
-            if has_nan_grid_batch: found_nan_grid = True
+            if has_nan_grid_batch:
+                found_nan_grid = True
 
             # print(f"  Форма {OBS_ROBOT}: {state_tensor.shape}")
             # print(f"  Форма {GRID_KEY}: {grid_tensor.shape}")
@@ -373,8 +385,6 @@ if __name__ == "__main__":
             print(
                 f"Среднее время на батч: {(end_time - start_time) / batches_processed:.4f} сек"
             )
-
-
 
         print("\n--- Общая статистика ---")
         print(f"  {OBS_ROBOT}:")
