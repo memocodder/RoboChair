@@ -114,7 +114,7 @@ for epoch in range(num_epoch):
     if epoch_steps > 0:
         avg_epoch_loss = epoch_loss_sum / epoch_steps
         epoch_avg_losses.append(avg_epoch_loss)
-        save_ckpt(policy, optimizer, step, checkpoint_path)
+        save_ckpt(policy, optimizer, step, checkpoint_path) # надо добавить возможнось сохранить только для инференса
         print(
             f"--- Эпоха {epoch+1} Завершена --- Средняя ошибка эпохи: {avg_epoch_loss:.4f} ---"
         )

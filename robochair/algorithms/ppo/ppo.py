@@ -32,7 +32,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from configs.algorithms.ppo_algo_cfg import PPOAlgoConfig
+from configs.ppo_config import PPOAlgoConfig
 from robochair.models.actor_critic_conv import ActorCriticConv
 from .rollout_storage import RolloutStorage
 

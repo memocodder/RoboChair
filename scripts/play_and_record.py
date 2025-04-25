@@ -58,7 +58,6 @@ for i in range(NUM_ENVS):
 
 # %%
 
-
 def split_img_and_obs(obs_img):
     image_size = 39 * 39
     image_shape = (1, 39, 39)

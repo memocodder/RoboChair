@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.distributions import Normal
 from torchvision.ops import MLP
 import math
-from configs.algorithms.ppo_algo_cfg import PPOPolicyConfig
+from configs.ppo_config import PPOPolicyConfig
 
 
 class EncoderEmulator(
@@ -60,7 +60,7 @@ class VisEncoder(nn.Module):
         with torch.no_grad():
             dummy_input = torch.zeros(
                 1, self.input_channels, self.input_height, self.input_width
-            ).cpu()
+            )
             conv_output = self.conv_layers(dummy_input)
             self._flattened_size = conv_output.view(1, -1).shape[1]
 

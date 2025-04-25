@@ -1,4 +1,4 @@
-from configs.environments.genesis_simple_cfg import GenesisEnvConfig
+from configs.genesis_config import GenesisEnvConfig
 from .robot import Robot
 from .corridor import Corridor
 from .goal import Goal
@@ -89,13 +89,14 @@ class Env:
     def __init__(
         self,
         cfg: GenesisEnvConfig,
-        num_envs,
+        num_envs=1,
+        log_level="info",
         show_viewer=False,
         arches_using=False,
         registered_keys=None,
         gta_cam=False,
     ):
-
+        
         self.device = cfg.device
         self.show_viewer = show_viewer
         self.gta_cam = gta_cam
@@ -109,6 +110,9 @@ class Env:
         self.simulate_action_latency = True
         self.dt = 0.02  # control frequency on real robot is 50hz
         self.max_episode_length = math.ceil(self.episode_length_s / self.dt)
+
+        gs.init(theme="light", logging_level=log_level)
+
 
         # create scene
         self.scene = gs.Scene(
@@ -202,7 +206,7 @@ class Env:
             robot_pos,
             robot_euler,
         )
-        look_at_tensor = robot_pos + torch.tensor([0.0, 0.0, look_at_z_offset])
+        look_at_tensor = robot_pos + torch.tensor([0.0, 0.0, look_at_z_offset]).cpu()
 
         final_cam_pos_np = cam_pos_tensor.numpy()
         final_lookat_np = look_at_tensor.numpy()

@@ -39,7 +39,7 @@ import torch
 from .ppo import PPO
 from robochair.models.actor_critic_conv import ActorCriticConv
 from robochair.environments.base_env import VecEnv
-from configs.algorithms.ppo_algo_cfg import PPOAlgoConfig, PPORunnerConfig
+from configs.ppo_config import PPOAlgoConfig, PPORunnerConfig
 
 
 class OnPolicyRunner:
