@@ -94,7 +94,7 @@ class Robot:
 
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file="/home/o/Downloads/URDF/car/car/car.urdf",
+                file="data/car/car.urdf",
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),

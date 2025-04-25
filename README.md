@@ -14,7 +14,6 @@ RL-эксперименты для Robochair с использованием Dif
 git clone https://github.com/memocodder/RoboChair.git
 cd RoboChair
 
-
 # 2. Создать/активировать venv (рекомендуется)
 # python -m venv venv && source venv/bin/activate
 
