@@ -2,6 +2,7 @@
 tensorboard
 trimesh
 diffusers
+einops
 
 # Кастомная версия Genesis
 git+https://github.com/memocodder/genesis-old.git
