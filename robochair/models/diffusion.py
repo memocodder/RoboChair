@@ -13,11 +13,11 @@ from torch import Tensor, nn
 from configs.diffusion_config import DiffusionPolicyConfig
 
 
-class DiffusionPolicy:
+class DiffusionPolicy(nn.Module):
 
     def __init__(self, config: DiffusionPolicyConfig):
-
-        super().__init__(config)
+        super().__init__() 
+        
         self.config = config
 
         # Очереди заполняются во время выполнения (rollout) политики, они содержат n последних наблюдений и действий
@@ -39,10 +39,7 @@ class DiffusionPolicy:
         self._queues["observation.images"] = deque(
             maxlen=self.config.n_obs_steps
         )
-        if self.config.env_state_feature:
-            self._queues["observation.environment_state"] = deque(
-                maxlen=self.config.n_obs_steps
-            )
+
 
     @torch.no_grad
     def select_action(self, batch: dict[str, Tensor]) -> Tensor:
@@ -98,6 +95,22 @@ def _make_noise_scheduler(
         raise ValueError(f"Unsupported noise scheduler type {name}")
 
 
+
+def get_device_from_parameters(module: nn.Module) -> torch.device:
+    """Get a module's device by checking one of its parameters.
+
+    Note: assumes that all parameters have the same device
+    """
+    return next(iter(module.parameters())).device
+
+
+def get_dtype_from_parameters(module: nn.Module) -> torch.dtype:
+    """Get a module's parameter dtype by checking one of its parameters.
+
+    Note: assumes that all parameters have the same dtype.
+    """
+    return next(iter(module.parameters())).dtype
+
 class DiffusionModel(nn.Module):
     def __init__(self, config: DiffusionPolicyConfig):
         super().__init__()
@@ -110,22 +123,20 @@ class DiffusionModel(nn.Module):
 
         self.rgb_encoder = VisEncoder(config)
         global_cond_dim += self.rgb_encoder.feature_dim
-        # if self.config.env_state_feature:
-        #     global_cond_dim += self.config.env_state_feature.shape[0]
 
         self.unet = DiffusionConditionalUnet1d(
             config, global_cond_dim=global_cond_dim * config.n_obs_steps
         )
 
         self.noise_scheduler = _make_noise_scheduler(
-            config.noise_scheduler_type,
-            num_train_timesteps=config.num_train_timesteps,
-            beta_start=config.beta_start,
-            beta_end=config.beta_end,
-            beta_schedule=config.beta_schedule,
-            clip_sample=config.clip_sample,
-            clip_sample_range=config.clip_sample_range,
-            prediction_type=config.prediction_type,
+            config.noise_scheduler.scheduler_type,
+            num_train_timesteps=config.noise_scheduler.num_train_timesteps,
+            beta_start=config.noise_scheduler.beta_start,
+            beta_end=config.noise_scheduler.beta_end,
+            beta_schedule=config.noise_scheduler.beta_schedule,
+            clip_sample=config.noise_scheduler.clip_sample,
+            clip_sample_range=config.noise_scheduler.clip_sample_range,
+            prediction_type=config.noise_scheduler.prediction_type,
         )
 
         if config.num_inference_steps is None:
@@ -174,8 +185,8 @@ class DiffusionModel(nn.Module):
 
     def _prepare_global_conditioning(self, batch: dict[str, Tensor]) -> Tensor:
         """Encode image features and concatenate them all together along with the state vector."""
-        batch_size, n_obs_steps = batch[OBS_ROBOT].shape[:2]
-        global_cond_feats = [batch[OBS_ROBOT]]
+        batch_size, n_obs_steps = batch['observation.state'].shape[:2]
+        global_cond_feats = [batch['observation.state']]
         # Extract image features.
 
         grid_encoder = self.rgb_encoder
@@ -281,13 +292,13 @@ class DiffusionModel(nn.Module):
 
         # Compute the loss.
         # The target is either the original trajectory, or the noise.
-        if self.config.prediction_type == "epsilon":
+        if self.config.noise_scheduler.prediction_type == "epsilon":
             target = eps
-        elif self.config.prediction_type == "sample":
+        elif self.config.noise_scheduler.prediction_type == "sample":
             target = batch["action"]
         else:
             raise ValueError(
-                f"Unsupported prediction type {self.config.prediction_type}"
+                f"Unsupported prediction type {self.config.noise_scheduler.prediction_type}"
             )
 
         loss = F.mse_loss(pred, target, reduction="none")
@@ -518,28 +529,30 @@ class DiffusionConditionalUnet1d(nn.Module):
         super().__init__()
 
         self.config = config
+        self.unet_config = config.unet
+        
 
         # Encoder for the diffusion timestep.
         self.diffusion_step_encoder = nn.Sequential(
-            DiffusionSinusoidalPosEmb(config.diffusion_step_embed_dim),
+            DiffusionSinusoidalPosEmb(self.unet_config.diffusion_step_embed_dim),
             nn.Linear(
-                config.diffusion_step_embed_dim,
-                config.diffusion_step_embed_dim * 4,
+                self.unet_config.diffusion_step_embed_dim,
+                self.unet_config.diffusion_step_embed_dim * 4,
             ),
             nn.Mish(),
             nn.Linear(
-                config.diffusion_step_embed_dim * 4,
-                config.diffusion_step_embed_dim,
+                self.unet_config.diffusion_step_embed_dim * 4,
+                self.unet_config.diffusion_step_embed_dim,
             ),
         )
 
         # The FiLM conditioning dimension.
-        cond_dim = config.diffusion_step_embed_dim + global_cond_dim
+        cond_dim = self.unet_config.diffusion_step_embed_dim + global_cond_dim
 
         # In channels / out channels for each downsampling block in the Unet's encoder. For the decoder, we
         # just reverse these.
-        in_out = [(config.num_actions, config.down_dims[0])] + list(
-            zip(config.down_dims[:-1], config.down_dims[1:], strict=True)
+        in_out = [(config.num_actions, self.unet_config.down_dims[0])] + list(
+            zip(self.unet_config.down_dims[:-1], self.unet_config.down_dims[1:], strict=True)
         )
         # in_out = [(config.action_feature.shape[0], config.down_dims[0])] + list(
         #     zip(config.down_dims[:-1], config.down_dims[1:], strict=True)
@@ -548,9 +561,9 @@ class DiffusionConditionalUnet1d(nn.Module):
         # Unet encoder.
         common_res_block_kwargs = {
             "cond_dim": cond_dim,
-            "kernel_size": config.kernel_size,
-            "n_groups": config.n_groups,
-            "use_film_scale_modulation": config.use_film_scale_modulation,
+            "kernel_size": self.unet_config.kernel_size,
+            "n_groups": self.unet_config.n_groups,
+            "use_film_scale_modulation": self.unet_config.use_film_scale_modulation,
         }
         self.down_modules = nn.ModuleList([])
         for ind, (dim_in, dim_out) in enumerate(in_out):
@@ -578,13 +591,13 @@ class DiffusionConditionalUnet1d(nn.Module):
         self.mid_modules = nn.ModuleList(
             [
                 DiffusionConditionalResidualBlock1d(
-                    config.down_dims[-1],
-                    config.down_dims[-1],
+                    self.unet_config.down_dims[-1],
+                    self.unet_config.down_dims[-1],
                     **common_res_block_kwargs,
                 ),
                 DiffusionConditionalResidualBlock1d(
-                    config.down_dims[-1],
-                    config.down_dims[-1],
+                    self.unet_config.down_dims[-1],
+                    self.unet_config.down_dims[-1],
                     **common_res_block_kwargs,
                 ),
             ]
@@ -616,11 +629,11 @@ class DiffusionConditionalUnet1d(nn.Module):
 
         self.final_conv = nn.Sequential(
             DiffusionConv1dBlock(
-                config.down_dims[0],
-                config.down_dims[0],
-                kernel_size=config.kernel_size,
+                self.unet_config.down_dims[0],
+                self.unet_config.down_dims[0],
+                kernel_size=self.unet_config.kernel_size,
             ),
-            nn.Conv1d(config.down_dims[0], config.num_actions, 1),
+            nn.Conv1d(self.unet_config.down_dims[0], self.config.num_actions, 1),
             # nn.Conv1d(config.down_dims[0], config.action_feature.shape[0], 1),
         )
 

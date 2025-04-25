@@ -4,11 +4,6 @@ from pathlib import Path
 import re
 import random
 from typing import List, Dict, Tuple, Iterator, Union, Optional
-from lerobot.common.datasets.utils import cycle
-
-# Предполагаем, что эти константы определены где-то в lerobot
-# Если нет, замени на строки "observation.state" и т.д.
-from lerobot.common.constants import OBS_ROBOT, OBS_ENV
 
 
 class WheelchairSequenceDataset(IterableDataset):
@@ -74,11 +69,15 @@ class WheelchairSequenceDataset(IterableDataset):
             )
         self.output_grid_key = self.grid_keys[0]  # Ключ для выходного словаря
 
+        self.lengths = []
+
         self.episode_paths = self._find_and_sort_episodes()
         if not self.episode_paths:
             raise ValueError(
                 f"В директории {self.episodes_dir} не найдено валидных эпизодов."
             )
+        
+        self._calculated_len: Optional[int] = None
 
         print(f"Датасет инициализирован для директории: {self.episodes_dir}")
         print(f"Найдено {len(self.episode_paths)} эпизодов.")
@@ -99,6 +98,7 @@ class WheelchairSequenceDataset(IterableDataset):
                 if match:
                     try:
                         index = int(match.group(1))
+                        self.lengths.append(int(match.group(2)))
                         # Проверяем наличие всех необходимых файлов
                         if all(
                             (item / self.FEATURE_FILENAMES[key]).exists()
@@ -113,6 +113,36 @@ class WheelchairSequenceDataset(IterableDataset):
                         continue
         valid_episodes.sort(key=lambda x: x[0])
         return [path for index, path in valid_episodes]
+    
+
+    def __len__(self) -> int:
+        if self._calculated_len is not None:
+            return self._calculated_len
+
+        print("Вычисление общей длины датасета по списку длин...")
+        total_sequences = 0
+        processed_episodes = 0
+        skipped_episodes_len = 0
+
+        for ep_len in self.lengths:
+            if ep_len >= self.min_episode_len:
+                num_valid_starts = ep_len - max(self.n_obs_steps, self.diffusion_horizon) + 1
+                if num_valid_starts > 0:
+                    total_sequences += num_valid_starts
+                    processed_episodes += 1
+                else:
+                    skipped_episodes_len += 1
+            else:
+                skipped_episodes_len += 1
+
+        print(f"Вычисление длины завершено.")
+        print(f"  Всего эпизодов найдено (по списку длин): {len(self.lengths)}")
+        print(f"  Эпизодов, учтенных в длине (>= {self.min_episode_len} шагов): {processed_episodes}")
+        print(f"  Эпизодов, пропущено из-за длины: {skipped_episodes_len}")
+        print(f"  Общее количество последовательностей: {total_sequences}")
+
+        self._calculated_len = total_sequences
+        return self._calculated_len
 
     def _load_episode(
         self, episode_path: Path

@@ -21,7 +21,7 @@ class RobotBuffer:
         num_envs = robot_ctx.num_envs
         device = robot_ctx.device
         num_joints = robot_ctx.num_joints
-        self.motor_dofs = sorted(robot_ctx.motor_dofs)
+        self.motor_dofs = robot_ctx.motor_dofs
         self.robot = robot_ctx.robot
 
         # База
@@ -117,10 +117,10 @@ class Robot:
             self.robot.get_joint(name).dof_idx_local for name in self.dof_names
         ]
 
-        self.wheel_idx = sorted(self.motor_dofs[0:4])
-        self.turn_idx = sorted(self.motor_dofs[4:6])
-        self.head_idx = sorted(self.motor_dofs[6:7])
-        self.eye_idx = sorted(self.motor_dofs[7:8])
+        self.wheel_idx = self.motor_dofs[0:4]
+        self.turn_idx = self.motor_dofs[4:6]
+        self.head_idx = self.motor_dofs[6:7]
+        self.eye_idx = self.motor_dofs[7:8]
 
         self.wheel_scale = torch.tensor(
             [30, -30, -30, 30], dtype=gs.tc_float, device=self.device

@@ -1,6 +1,5 @@
 # %%
 
-
 import sys
 import os
 
@@ -14,35 +13,46 @@ if current_dir_name == "scripts":
 else:
     project_root = current_dir_name
 
-print(f"project_root: {project_root}")
+print(f'project_root: {project_root}')
+
+# обязательно реализовать релоауды
 
 # %%
 
+from configs.log_config import LoggingConfig, setup_logger
+
+log_config = LoggingConfig(
+    base_log_dir=project_root + "/results",
+    experiment_name="RobochairGenesisPPO_Play_Simple_v1",
+    experiment_description="Запись, следовать цели в простом широком коридоре.",
+    log_level="WARNING",
+    overwrite_existing=True,
+)
+
+logger = setup_logger(log_config)
+experiment_path = log_config.experiment_dir
+
+
 import torch
-import genesis as gs
+
+from configs.genesis_config import GenesisEnvConfig
 
 from robochair.environments import Env
+ # Управление с помощью клавишь ВВЕРХ ВНИЗ ВЛЕВО ВПРАВО!!!
 from robochair.environments.agent_control import AgentControl
 from robochair.data_handling.recorder import EpisodeRecorder
 
-from configs.experiments.genesis_ppo_simple_cfg import config
-
-
 import matplotlib.pyplot as plt
 
+env_configuration = GenesisEnvConfig()
 
-# %%
-
-gs.init(theme="light", logging_level="warning")
-
-# %%
 
 NUM_ENVS = 1
 
-control = AgentControl()
+control = AgentControl() # Управление с помощью клавишь ВВЕРХ ВНИЗ ВЛЕВО ВПРАВО!!!
 
 env = Env(
-    config.env,
+    env_configuration,
     num_envs=NUM_ENVS,
     show_viewer=True,
     gta_cam=True,

@@ -1,6 +1,5 @@
 # %%
 
-
 import sys
 import os
 
@@ -14,36 +13,45 @@ if current_dir_name == "scripts":
 else:
     project_root = current_dir_name
 
-print(f"project_root: {project_root}")
+# обязательно реализовать релоауды
 
 # %%
 
-import torch
-import genesis as gs
+from configs.log_config import LoggingConfig, setup_logger
+
+log_config = LoggingConfig(
+    base_log_dir=project_root + "/results",
+    experiment_name="RobochairGenesisPPO_Eval_100_Simple_v1",
+    experiment_description="Инференс и запись, следовать цели в простом широком коридоре.",
+    log_level="WARNING",
+    overwrite_existing=True,
+)
+
+logger = setup_logger(log_config)
+experiment_path = log_config.experiment_dir
+
+
+# %%
 
 from robochair.environments import Env
-from robochair.environments.agent_control import AgentControl
-from robochair.data_handling.recorder import EpisodeRecorder
 from robochair.algorithms.ppo.on_policy_runner import OnPolicyRunner
 
-from configs.experiments.genesis_ppo_simple_cfg import config
+from configs.genesis_config import GenesisEnvConfig
+from configs.ppo_config import PPOAlgoConfig
 
+from robochair.data_handling.recorder import EpisodeRecorder
 
-import matplotlib.pyplot as plt
+algo_configuration = PPOAlgoConfig()
+env_configuration = GenesisEnvConfig()
 
-
-# %%
-
-gs.init(theme="light", logging_level="warning")
-
-# %%
 
 NUM_ENVS = 100
 
 env = Env(
-    config.env,
+    env_configuration,
     num_envs=NUM_ENVS,
     show_viewer=True,
+    log_level=log_config.log_level
 )
 
 recorders = {}
@@ -56,17 +64,17 @@ for i in range(NUM_ENVS):
 
 runner = OnPolicyRunner(
     env,
-    config.algo,
-    # log_dir=config.logging.log_dir,
-    log_dir=project_root + "/results/ppo_eval",
+    algo_configuration,
+    log_dir=experiment_path,
 )
 
-runner.load(project_root + "/results/checkpoints_ppo/model_wall_great.pt")
+runner.load(project_root + "/trained_models/ppo.pt")
 
 policy = runner.get_inference_policy(device="cuda")
 
 # %%
 
+import torch
 
 def split_img_and_obs(obs_img):
     image_size = 39 * 39
@@ -80,7 +88,7 @@ def split_img_and_obs(obs_img):
 
 obs, _ = env.reset()
 with torch.no_grad():
-    for i in range(2 * 1000):
+    for i in range(4 * 1000 + 20):
         actions = policy(obs)
         obs, _, rews, dones, infos = env.step(actions)
 

@@ -1,6 +1,4 @@
 # %%
-
-
 import sys
 import os
 
@@ -16,50 +14,54 @@ else:
 
 print(f"project_root: {project_root}")
 
-# %%
 
-import torch
-import genesis as gs
+from configs.log_config import LoggingConfig, setup_logger
+
+log_config = LoggingConfig(
+    base_log_dir=project_root + "/results",
+    experiment_name="RobochairGenesisDiffusionEval_Simple_v1",
+    experiment_description="Провека результатов обучения диффузионной политики на экспертных записях PPO.",
+    log_level="INFO",
+    overwrite_existing=True,
+)
+
+logger = setup_logger(log_config)
+experiment_path = log_config.experiment_dir
+
 
 from robochair.environments import Env
-from robochair.algorithms.diffusion import (
-    modeling_diffusion,
-    configuration_diffusion,
-)
-from robochair.algorithms.diffusion.utils import load_ckpt
+from robochair.algorithms.diffusion import DiffusionRunner
 
-
-from configs.experiments.genesis_ppo_simple_cfg import config
-
-
-# %%
-checkpoint_path = project_root + "/results/checkpoints_diffusion"
-device = "cuda"
-cfg = configuration_diffusion.DiffusionConfig()
-policy = modeling_diffusion.DiffusionPolicy(cfg).to(device)
-_ = load_ckpt(
-    policy,
-    torch.optim.Adam(policy.get_optim_params(), lr=1e-4),
-    checkpoint_path,
-    device=device,
-)
-policy.eval()
+from configs.genesis_config import GenesisEnvConfig
+from configs.diffusion_config import DiffusionAlgoConfig, DiffusionRunnerConfig
 
 # %%
 
-gs.init(theme="light", logging_level="warning")
-
-NUM_ENVS = 1
+algo_configuration = DiffusionAlgoConfig(
+    runner=DiffusionRunnerConfig(
+        checkpoint_dir=project_root + "/trained_models"
+    )
+)
+env_configuration = GenesisEnvConfig()
 
 env = Env(
-    config.env,
-    num_envs=NUM_ENVS,
+    env_configuration,
+    num_envs=1,
+    log_level=log_config.log_level,
     show_viewer=True,
     gta_cam=True,
 )
 
+runner = DiffusionRunner(algo_configuration, logger)
+
+runner.load_checkpoint()
 
 # %%
+
+import torch
+from robochair.models.diffusion import DiffusionPolicy
+
+policy: DiffusionPolicy = runner.get_inference_policy()
 
 
 def split_img_and_obs(obs_img):
@@ -79,12 +81,22 @@ def to_diff_type(obs, grid):
     }
 
 
-obs, _ = env.reset()
-grid, obs_ = split_img_and_obs(obs)
-print(f"grid.shape = {grid.shape}")
-print(f"obs_.shape = {obs_.shape}")
-with torch.inference_mode():
-    for i in range(1 * 1000):
+with torch.no_grad():
+    obs, _ = env.reset()
+    grid, obs_ = split_img_and_obs(obs)
+    print(f"grid.shape = {grid.shape}")
+    print(f"obs_.shape = {obs_.shape}")
+
+    for i in range(10):
+        actions = policy.select_action(to_diff_type(obs_, grid))
+        obs, _, rews, dones, infos = env.step(actions)
+        grid, obs_ = split_img_and_obs(obs)
+
+    # %%
+    obs, _ = env.reset()
+    grid, obs_ = split_img_and_obs(obs)
+
+    for i in range(1000):
         actions = policy.select_action(to_diff_type(obs_, grid))
         obs, _, rews, dones, infos = env.step(actions)
         grid, obs_ = split_img_and_obs(obs)

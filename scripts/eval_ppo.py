@@ -1,6 +1,5 @@
 # %%
 
-
 import sys
 import os
 
@@ -14,54 +13,55 @@ if current_dir_name == "scripts":
 else:
     project_root = current_dir_name
 
-print(f"project_root: {project_root}")
+# обязательно реализовать релоауды
 
 # %%
 
-import torch
-import genesis as gs
+from configs.log_config import LoggingConfig, setup_logger
+
+log_config = LoggingConfig(
+    base_log_dir=project_root + "/results",
+    experiment_name="RobochairGenesisPPOEval_Simple_v1",
+    experiment_description="Инференс, следовать цели в простом широком коридоре.",
+    log_level="WARNING",
+    overwrite_existing=True,
+)
+
+logger = setup_logger(log_config)
+experiment_path = log_config.experiment_dir
+
+# %%
 
 from robochair.environments import Env
 from robochair.algorithms.ppo.on_policy_runner import OnPolicyRunner
 
-from configs.experiments.genesis_ppo_simple_cfg import config
+from configs.genesis_config import GenesisEnvConfig
+from configs.ppo_config import PPOAlgoConfig
 
-
-import matplotlib.pyplot as plt
-
-
-# %%
-
-gs.init(theme="light", logging_level="warning")
-
-# %%
-
-NUM_ENVS = 1
+algo_configuration = PPOAlgoConfig()
+env_configuration = GenesisEnvConfig()
 
 env = Env(
-    config.env,
-    num_envs=NUM_ENVS,
+    env_configuration,
+    num_envs=1,
+    log_level=log_config.log_level,
     show_viewer=True,
-    # gta_cam=True,
+    gta_cam=True,
 )
-
-
-# %%
 
 runner = OnPolicyRunner(
     env,
-    config.algo,
-    # log_dir=config.logging.log_dir,
-    log_dir=project_root + "/results/ppo_eval",
+    algo_configuration,
+    log_dir=experiment_path,
 )
 
-runner.load(project_root + "/results/checkpoints_ppo/model_wall_great.pt")
+
+runner.load(project_root + "/trained_models/ppo.pt")
 
 policy = runner.get_inference_policy(device="cuda")
 
 # %%
-
-
+import torch
 
 obs, _ = env.reset()
 with torch.no_grad():

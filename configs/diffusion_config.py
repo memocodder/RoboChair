@@ -79,20 +79,17 @@ class DiffusionPolicyConfig:
         8  # Кол-во шагов действий, выполняемых за один вызов политики
     )
 
-    # --- Формы входных и выходных данных ---
-    # Ключ - имя входа/выхода, значение - список размерностей (БЕЗ батча и времени)
-    # Пример: 'observation.image': [3, 96, 96], 'action': [7]
-    # Важно: Должен быть 'observation.state' и/или 'observation.image*' и/или 'observation.environment_state'
-    #        Должен быть 'action'
-    input_shapes: Dict[str, List[int]] = field(
-        default_factory=lambda: {
-            "observation.image_primary": [3, 96, 96],  # Пример: одна камера
-            "observation.state": [10],  # Пример: проприоцептивные данные
-        }
-    )
-    output_shapes: Dict[str, List[int]] = field(
-        default_factory=lambda: {"action": [7]}  # Пример: 7-мерное действие
-    )
+    num_obs = 20
+    num_actions = 4
+    # input_shapes: Dict[str, List[int]] = field(
+    #     default_factory=lambda: {
+    #         "observation.image_primary": [3, 96, 96],  # Пример: одна камера
+    #         "observation.state": [10],  # Пример: проприоцептивные данные
+    #     }
+    # )
+    # output_shapes: Dict[str, List[int]] = field(
+    #     default_factory=lambda: {"action": [7]}  # Пример: 7-мерное действие
+    # )
 
     # --- Параметры архитектуры ---
     vision_encoder: VisionEncoderConfig = field(
