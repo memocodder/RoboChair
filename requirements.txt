@@ -1,0 +1,7 @@
+# Основные зависимости
+tensorboard
+trimesh
+diffusers
+
+# Кастомная версия Genesis
+git+https://github.com/memocodder/genesis-old.git

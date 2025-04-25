@@ -65,6 +65,6 @@ import torch
 
 obs, _ = env.reset()
 with torch.no_grad():
-    for i in range(2 * 1000):
+    for i in range(20 * 1000):
         actions = policy(obs)
         obs, _, rews, dones, infos = env.step(actions)

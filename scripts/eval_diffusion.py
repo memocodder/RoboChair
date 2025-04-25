@@ -39,7 +39,9 @@ from configs.diffusion_config import DiffusionAlgoConfig, DiffusionRunnerConfig
 
 algo_configuration = DiffusionAlgoConfig(
     runner=DiffusionRunnerConfig(
-        checkpoint_dir=project_root + "/trained_models"
+        # checkpoint_dir=project_root + "/trained_models"
+        checkpoint_dir=project_root
+        + "/results/RobochairGenesisDiffusionTrain_Simple_v1/"
     )
 )
 env_configuration = GenesisEnvConfig()
@@ -82,17 +84,6 @@ def to_diff_type(obs, grid):
 
 
 with torch.no_grad():
-    obs, _ = env.reset()
-    grid, obs_ = split_img_and_obs(obs)
-    print(f"grid.shape = {grid.shape}")
-    print(f"obs_.shape = {obs_.shape}")
-
-    for i in range(10):
-        actions = policy.select_action(to_diff_type(obs_, grid))
-        obs, _, rews, dones, infos = env.step(actions)
-        grid, obs_ = split_img_and_obs(obs)
-
-    # %%
     obs, _ = env.reset()
     grid, obs_ = split_img_and_obs(obs)
 
